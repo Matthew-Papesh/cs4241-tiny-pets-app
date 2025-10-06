@@ -1,6 +1,6 @@
 {
-    "name": "a4-matthewpapesh",
-    "version": "1.1.0",
+    "name": "a3-matthewpapesh",
+    "version": "1.0.0",
     "description": "",
     "author": "Matthew Papesh",
     "scripts": {
@@ -13,9 +13,6 @@
         "mongoose": "^8.18.2"
     },
     "devDependencies": {
-        "@babel/cli": "^7.28.3",
-        "@babel/core": "^7.28.4",
-        "@babel/preset-react": "^7.27.1",
         "nodemon": "^3.1.10"
     }
 }
