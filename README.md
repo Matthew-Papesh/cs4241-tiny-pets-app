@@ -1,5 +1,7 @@
 # Tiny Pets - CS4241 Webware Final Project
 ### Links:
+**Final Project Website: https://cs4241-tiny-pets-app.onrender.com**
+
 **Original Dev Repo for CS4241 Group 15: https://github.com/Matthew-Papesh/TinyPets**
 ### Overview:
 For our final project, we created a clicker/egg-hatching and pet-selling game where a user clicks an egg to hatch it and receive a randomized pet. To go into more detail: a user starts with 100 credits and can buy one egg, which they then bring to the hatching area through our dashboard. By clicking the egg 100 times, they hatch it. Midway through, the egg enters a cracked phase to indicate progress. There’s also a progress bar below so users can track their clicks if they prefer. After the egg hatches, the user can sell their pet to earn more coins and continue the cycle of buying eggs and collecting more pets. Some pets are rarer than others, so you’re more likely to get fish and forest wildlife in many draws, while rare pets, such as a Bubble Pet, appear less frequently.
