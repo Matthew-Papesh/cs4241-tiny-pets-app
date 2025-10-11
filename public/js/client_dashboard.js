@@ -1,170 +1,210 @@
 // global user data
 let username = "no-name"
-let tasks = []
 let key = ""
+let egg = {}
+let pets = []
+let credits = 0
 
-// handle parsing for user key to talk to server and server database for 
 // loading user dashboard page.
 document.addEventListener("DOMContentLoaded", async () => {
-    const match = window.location.pathname.match(/\/dashboard-(.+)/)
+    // Check for both dashboard and store URL patterns
+    let match = window.location.pathname.match(/\/dashboard\/(.+)/)
+    if (!match) {
+        match = window.location.pathname.match(/\/store\/(.+)/)
+    } if (!match) {
+        match = window.location.pathname.match(/\/mypets\/(.+)/)
+    } if (!match) {
+        match = window.location.pathname.match(/\/hatcher\/(.+)/)
+    }
+
     // check url validity
-    if(!match) {
-        return console.error("Invalid dashboard URL")
+    if (!match) {
+        return console.error("Invalid page URL - no user key found")
     }
     // good match; parse user key from url
     key = match[1]
+
     // try to get user info and user task info by api
     try {
         const response = await fetch(`/api/dashboard/${key}/users`)
-        if(!response) {
+        if (!response) {
             throw new Error("Failed to fetch user")
         }
-        
+
         data = await response.json()
+        
         username = data.id
-    } catch(err) {
+    } catch (err) {
         console.error(err.message)
     }
-    // try to get user tasks info by api
+    // try to get user data info by api
     try {
-        const response = await fetch(`./api/dashboard/${key}/tasks`)
-        tasks = await response.json()
-        if(!response) {
-            throw new Error("Failed to fetch user's tasks")
+        const response = await fetch(`/api/dashboard/${key}/egg`)
+        egg = await response.json()
+        if (!response) {
+            throw new Error("Failed to fetch user data")
         }
-    } catch(err) {
+    } catch (err) {
+        console.error(err.message)
+    }
+    try {
+        const response = await fetch(`/api/dashboard/${key}/pets`)
+        pets = await response.json()
+        if (!response) {
+            throw new Error("Failed to fetch user data")
+        }
+    } catch (err) {
         console.error(err.message)
     }
 
-    // use info to setup page
-    const username_div = document.getElementById("user_name")
-    username_div.innerHTML = `<h1>Hello ${username}, </h1><p>Here are your current tasks:</p>`
-    // create task row (first row is the col headers)
-    create_task_row("Task Priority", "Task Description", true)
-    for(let i=0; i<tasks.length; i++) {
-        task = tasks[i] // loop through user tasks items and load into divs in task box
-        create_task_row(task["priority"], task["text"], false)
+    // fetch and display credits
+    await loadCredits()
+
+    // add test button functionality
+    const testCreditsBtn = document.getElementById("test-credits-btn")
+    if (testCreditsBtn) {
+        testCreditsBtn.addEventListener("click", addTestCredits)
+    }
+
+    // add logout button functionality
+    const logoutBtn = document.getElementById("logout-btn")
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", logout)
+    }
+
+    play_audio()
+    const hatcher_panel_dom = document.getElementById("hatching-link-id")
+    if(JSON.stringify(egg) === "{}" && hatcher_panel_dom !== null) {
+        hatcher_panel_dom.innerHTML = "<p>Must Buy Egg</p>"
+        hatcher_panel_dom.style = "background-color: grey; font-size: 5em; color: red;"
     }
 })
 
-// handle submitting task to server database
-const submit_task = async function(event) {
-  // stop form submission from trying to load
-  // a new .html page for displaying results...
-  // this was the original browser behavior and still
-  // remains to this day
-  event.preventDefault()
-    // get inputted task info
-    const task_priority = document.querySelector("#inputPriority").value
-    const task_text = document.querySelector("#inputText").value
-    // parse to json
-    json = { 
-        key: key,
-        priority: task_priority, 
-        text: task_text
-    }  
-    // parse json to body and push to server
-    body = JSON.stringify(json)
-    // request POST to server
-    const response = await fetch( "/pushtasks", {
-        method:"POST",
-        headers: { "Content-Type": "application/json" },
-        body 
-    })
-
-    // add task visibly to task box after pushing to server
-    create_task_row(task_priority, task_text, false)
+// handles redirecting user to dashboard 
+const redirect_dashboard = async function (event) { window.location.href = `/dashboard/${key}` }
+// handles redirecting user to their mypets page 
+const redirect_mypets = async function (event) { window.location.href = `/mypets/${key}` }
+// handles redirecting user to their store page 
+const redirect_store = async function (event) { window.location.href = `/store/${key}` }
+// handles redirecting user to their hatcher page 
+const redirect_hatching = async function (event) {
+    if(JSON.stringify(egg) !== "{}") {
+        window.location.href = `/hatcher/${key}` 
+    }
 }
 
-// create a task in the task box in the user dashboard from a page form; handle removing as well
-const create_task_row = async function(priority, text, header) {
-    const task_box = document.getElementById("task-box") 
-    if (!task_box) return console.error("Task container not found")
+// handles redirecting user to home page and flagging log out to server
+const logout = async function (event) {
+    try {
+        // parse json
+        const json = {
+            key: key,
+        }
+        // parse json to body and push to server
+        const body = JSON.stringify(json)
+        // request POST to server
+        const response = await fetch("/logout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body
+        })
 
-    // create row div
-    const row = document.createElement("div")
-    row.className = "row" // use className, not class
-    row.style.margin = "0"
-
-    // create priority column
-    const priority_col = document.createElement("div")
-    priority_col.className = "col-sm-4"
-    if(header) {
-        priority_col.innerHTML = `<h3 style="padding: 0; margin-bottom:0.3em;">${priority}</h3>`
-    } else {
-        priority_col.innerHTML = `<p>${priority}</p>`
+        // handle response
+        if (response.ok) {
+            console.log("Successfully logged out")
+            // redirect to login page
+            window.location.href = "/"
+        } else {
+            console.error("Logout failed:", response.statusText)
+            // Still redirect to login page even if server request fails
+            window.location.href = "/"
+        }
+    } catch (err) {
+        console.error("Error during logout:", err.message)
+        // Still redirect to login page even if there's an error
+        window.location.href = "/"
     }
+}
 
-    // create text column
-    const text_col = document.createElement("div")
-    text_col.className = "col-sm-4" 
-    if(header) { 
-        text_col.innerHTML = `<h3 style="padding: 0; margin-bottom:0.3em;">${text}</h3>`
-    } else {
-        text_col.innerHTML = `<p>${text}</p>`
-    }
+const play_audio = async function (event) {
+    const panel_select = new Audio("../assets/menu-hover.mp3")
+    panel_select.loop = false
+    panel_select.playbackRate = 1.0
+    panel_select.volume = 1.0
+    const music = new Audio("../assets/popcorn-and-videogames-audio.mp3")
+    music.loop = true
+    music.playbackRate = 0.95
+    music.volume = 0.1
+    music.autoplay = true
 
-    // create delete button column
-    const button_col = document.createElement("div")
-    button_col.className = "col-sm-4"
-    if(header) {
-        button_col.innerHTML = "<h3>Remove</h3>"
-    } else {
-        // button for column
-        const button = document.createElement("button")
-        button.className = "btn btn-lg btn-primary btn-block"
-        button.style.height = "2em"
-        button.innerHTML = "Delete"
-        button_col.appendChild(button)
+    document.addEventListener('click', () => { music.play() })
+    document.getElementsByClassName("panel-button-petstore").item(0).addEventListener('mouseenter', () => { panel_select.play() })
+    document.getElementsByClassName("panel-button-hatching").item(0).addEventListener('mouseenter', () => { panel_select.play() })
+    document.getElementsByClassName("panel-button-mypets").item(0).addEventListener('mouseenter', () => { panel_select.play() })
+}
 
-        // handle removing selected task from server database and remove locally from task box
-        button.onclick = async function() {
-            // parse to json
-            json = { 
-                key: key,
-                priority: priority, 
-                text: text
-            }  
-            // parse json to body and push to server
-            body = JSON.stringify(json)
-            // request POST to server
-            const response = await fetch( "/rmtasks", {
-                method:"POST",
-                headers: { "Content-Type": "application/json" },
-                body 
-            })
+// function to load and display user credits
+const loadCredits = async function () {
+    try {
+        const response = await fetch(`/api/dashboard/${key}/credits`)
+        if (!response.ok) {
+            throw new Error("Failed to fetch credits")
+        }
 
-            // remove task from task box
-            task_box.removeChild(row)
-            // handle response
-            console.log(response)
+        const data = await response.json()
+        credits = data.credits || 0  // Set global credits variable
+        const creditsAmount = document.getElementById("credits-amount")
+        if (creditsAmount) {
+            creditsAmount.textContent = credits
+        }
+    } catch (err) {
+        console.error("Error loading credits:", err.message)
+        credits = 0  // Set global credits to 0 on error
+        const creditsAmount = document.getElementById("credits-amount")
+        if (creditsAmount) {
+            creditsAmount.textContent = "0"
         }
     }
+}
 
-    // append columns to row
-    row.appendChild(priority_col)
-    row.appendChild(text_col)
-    row.appendChild(button_col)
+// function to refresh credits from server (useful after purchases/earnings)
+const refreshCredits = async function () {
+    await loadCredits()
+}
 
-    // append row to task box
-    task_box.appendChild(row)
-};
+// test function to add credits (you can remove this later)
+const addTestCredits = async function () {
+    try {
+        const response = await fetch(`/api/dashboard/${key}/credits`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: 10 })
+        })
 
-// handles redirecting user to home page and flagging log out to server
-const logout = async function(event) {
-    // parse json
-    json = {
-        key: key,
+        if (!response.ok) {
+            throw new Error("Failed to add credits")
+        }
+
+        const data = await response.json()
+        updateCreditsDisplay(data.credits)
+
+        // Optional: Show a brief notification
+        console.log("Added 10 credits! New total:", data.credits)
+    } catch (err) {
+        console.error("Error adding credits:", err.message)
     }
-    // parse json to body and push to server
-    body = JSON.stringify(json)
-    // request POST to server
-    const response = await fetch( "/logout", {
-        method:"POST",
-        headers: { "Content-Type": "application/json" },
-        body 
-    })
+}
 
-    // handle response
-    console.log(response)
+//function that takes string and returns egg picture file name
+const getEggImageFileName = function (eggType) {
+    switch (eggType) {
+        case "Egg":
+            return "egg.png";
+        case "Uncommon Egg":
+            return "uncommon-egg.png";
+        case "Rare Egg":
+            return "rare-egg.png";
+        case "Legendary Egg":
+            return "legendary-egg.png";
+    }
 }
